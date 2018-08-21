@@ -16,20 +16,16 @@ module Ruboty
       )
 
       def talk(message)
+        @name = message.from_name
         response = client.create_dialogue(message[:body], params)
-        @context = response.body["context"]
-        message.reply(response.body["utt"])
+        response_body = JSON.parse(response.body.force_encoding("utf-8"))
+        brain[@name]["mode"] = response_body["command"]
+        message.reply(response_body["systemText"]["utterance"])
       rescue Exception => e
         Ruboty.logger.error(%<Error: #{e.class}: #{e.message}\n#{e.backtrace.join("\n")}>)
       end
 
       private
-
-      def character_id
-        if ENV["DOCOMO_CHARACTER_ID"]
-          ENV["DOCOMO_CHARACTER_ID"].to_i
-        end
-      end
 
       def client
         @client ||= Docomoru::Client.new(api_key: ENV["DOCOMO_API_KEY"])
@@ -37,11 +33,23 @@ module Ruboty
 
       def params
         {
-          context: @context,
-          t: character_id,
+          clientData:{
+            option:{
+              mode: mode,
+              t: "kansai"
+            }
+          }
         }.reject do |key, value|
           value.nil?
         end
+      end
+
+      def brain
+        robot.brain.data[NAMESPACE] ||= {}
+      end
+
+      def mode
+        !brain[@name].nil? && brain[@name]["mode"] == "eyJtb2RlIjoic3J0ciJ9" ? "srtr" : "dialog"
       end
     end
   end
