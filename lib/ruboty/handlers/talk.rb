@@ -16,11 +16,10 @@ module Ruboty
       )
 
       def talk(message)
-        @name = message.from_name
+        @name = message.from_name || "太郎"
         response = client.create_dialogue(message[:body], params)
-        response_body = JSON.parse(response.body.force_encoding("utf-8"))
-        brain[@name]["mode"] = response_body["command"]
-        message.reply(response_body["systemText"]["utterance"])
+        brain[@name] = { mode: response.body["command"] }
+        message.reply(response.body["systemText"]["utterance"])
       rescue Exception => e
         Ruboty.logger.error(%<Error: #{e.class}: #{e.message}\n#{e.backtrace.join("\n")}>)
       end
@@ -49,7 +48,7 @@ module Ruboty
       end
 
       def mode
-        !brain[@name].nil? && brain[@name]["mode"] == "eyJtb2RlIjoic3J0ciJ9" ? "srtr" : "dialog"
+        !brain[@name].nil? && brain[@name][:mode] == "eyJtb2RlIjoic3J0ciJ9" ? "srtr" : "dialog"
       end
     end
   end
